@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>LumiPhones — Tech Resell Simulator</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="logo">🔄 <span>LumiPhones</span> <small>Resell Simulator</small></div>
+  <div class="top-stats">
+    <div class="balance" id="balance">$1,500</div>
+    <button class="btn primary pop" id="cartBtn">🛒 Cart <span id="cartCount">0</span></button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT : WORKSHOP -->
+  <main class="left">
+    <section class="card workshop">
+      <div class="card-head">
+        <h2>🛠️ Workshop <span class="hint">— tap an item in inventory to load it here</span></h2>
+        <div class="ws-tabs">
+          <button class="chip active" data-wstab="phone">Phone bench</button>
+          <button class="chip" data-wstab="pc">PC bench</button>
+          <button class="chip" data-wstab="screen">PC Screen</button>
+        </div>
+      </div>
+
+      <!-- PHONE BENCH -->
+      <div id="wsPhone" class="ws-pane">
+        <div id="phoneEmpty" class="empty">No phone loaded.<br>Buy a damaged phone → tap it in <b>Inventory</b>.</div>
+        <div id="phoneBench" class="hidden">
+          <div class="bench-cols">
+            <div class="phone-visual">
+              <img id="pbImg" src="" alt="phone" />
+              <div id="pbName"></div>
+              <div id="pbDamageList"></div>
+              <div class="resell-row">
+                <div><small>Buy price</small><b id="pbBuy"></b></div>
+                <div><small>Fixed value</small><b id="pbFixed"></b></div>
+                <button class="btn success pop" id="resellPhoneBtn">Resell 💰</button>
+              </div>
+            </div>
+            <div class="repair-area">
+              <h3 id="repairTitle">Repair</h3>
+              <p class="muted">1️⃣ Drag the <b>broken part (red)</b> to the 🗑️ bin &nbsp; 2️⃣ Drag the <b>new part (blue)</b> onto the phone slot</p>
+              <div id="repairSlots"></div>
+              <div class="bin-row">
+                <div id="trashBin" class="trash">🗑️<span>drag old part here</span></div>
+                <div id="newPartsBin" class="newparts"><span>New parts ↓ drag up</span><div id="newParts"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PC BENCH -->
+      <div id="wsPc" class="ws-pane hidden">
+        <div class="bench-cols">
+          <div class="pc-case" id="pcCase">
+            <div class="case-title">🖥️ PC CASE <small id="pcCaseName">— tap parts in inventory or drag here</small></div>
+            <div class="pc-slots" id="pcSlots"></div>
+            <div class="pc-actions">
+              <button class="btn primary pop" id="powerBtn">⏻ Power ON</button>
+              <button class="btn pop" id="clearPcBtn">Clear build</button>
+              <button class="btn success pop" id="sellPcBtn">Sell PC 💰</button>
+            </div>
+            <div class="usb-row" id="usbRow">USB PORT: <div id="usbSlot" class="usb-slot">— drag OS flash drive here —</div></div>
+          </div>
+          <div class="parts-help">
+            <h3>How to build</h3>
+            <ol>
+              <li>Buy CPU, GPU, RAM, Board, SSD, PSU, Case + OS USB in <b>Shop → PC</b></li>
+              <li><b>Drag</b> (or tap) parts from Inventory into the slots</li>
+              <li>Drag OS flash drive to USB port</li>
+              <li>Hit <b>Power ON</b> → BIOS → boot → desktop OS!</li>
+            </ol>
+            <div id="pcValue">Build value: $0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PC SCREEN : BIOS / BOOT / OS -->
+      <div id="wsScreen" class="ws-pane hidden">
+        <div class="monitor">
+          <div class="monitor-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span id="screenLabel">DISPLAY — OFF</span></div>
+          <div id="screen" class="screen off">
+            <div class="screen-off-msg">No signal — Power ON the PC bench</div>
+          </div>
+        </div>
+        <div class="touch-bios">
+          <button class="btn pop" data-bioskey="up">▲</button>
+          <button class="btn pop" data-bioskey="down">▼</button>
+          <button class="btn pop" data-bioskey="left">◀</button>
+          <button class="btn pop" data-bioskey="right">▶</button>
+          <button class="btn primary pop" data-bioskey="enter">ENTER</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card howto">
+      <h3>💡 How to play</h3>
+      <p>Buy broken phones cheap → drag-repair every damage → resell for profit. Build PCs part-by-part → install OS via BIOS → sell. Flip storage units for loot. Start: <b>$1,500</b>.</p>
+    </section>
+  </main>
+
+  <!-- RIGHT : SHOP + INVENTORY -->
+  <aside class="right">
+    <section class="card shop">
+      <div class="card-head">
+        <h2>🏪 Marketplace</h2>
+        <div class="shop-cats">
+          <button class="chip active" data-cat="phones">📱 Phones</button>
+          <button class="chip" data-cat="pc">🖥️ PC Parts</button>
+          <button class="chip" data-cat="units">📦 Units</button>
+        </div>
+      </div>
+      <div class="subcats" id="pcSubcats" style="display:none"></div>
+      <input id="search" placeholder="🔍 search items…" />
+      <div id="shopList" class="shop-list"></div>
+    </section>
+
+    <section class="card inventory">
+      <div class="card-head"><h2>🎒 Inventory <small>(tap to load → workshop)</small></h2><button class="btn small pop" id="refreshPhones">🎲 new phone offers</button></div>
+      <div id="invList" class="inv-list"><div class="empty">Empty — buy something!</div></div>
+    </section>
+  </aside>
+</div>
+
+<!-- CART DRAWER -->
+<div id="cartDrawer" class="drawer">
+  <div class="drawer-head"><h2>🛒 Your cart</h2><button class="btn small pop" id="closeCart">✕</button></div>
+  <div id="cartItems"></div>
+  <div class="drawer-foot"><div id="cartTotal">Total: $0</div><button class="btn success pop big" id="checkoutBtn">Checkout 💳</button></div>
+</div>
+
+<!-- UNIT OPEN MODAL -->
+<div id="unitModal" class="modal hidden">
+  <div class="modal-box" id="unitBox">
+    <h2 id="unitTitle">📦 Opening unit…</h2>
+    <div id="unitAnim" class="unit-anim">📦</div>
+    <div id="unitResult"></div>
+    <button class="btn primary pop big hidden" id="claimLootBtn">Claim loot ✅</button>
+    <button class="btn small pop" id="closeUnitBtn">Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

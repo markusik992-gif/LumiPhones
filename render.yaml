@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: lumiphones
+    env: static
+    buildCommand: echo "static site - no build"
+    staticPublishPath: .
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
