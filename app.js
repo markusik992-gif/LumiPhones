@@ -421,41 +421,133 @@ $('#powerBtn').onclick=()=>{
   if(compat().some(([k])=>k==='bad')){biosScreen('INCOMPATIBLE PARTS ❌ — back to PC bench');return;}
   if(!pcBuild.BOARD||!pcBuild.CPU||!pcBuild.RAM||!pcBuild.PSU){biosScreen('NO BOOT: need BOARD+CPU+RAM+PSU ❌');return;}
   const maxGb=pcBuild.RAM.gb||16;
-  bios={tab:0,sel:0,ram:Math.min(8,maxGb),max:maxGb};
+  bios={tab:0,sel:0,ram:maxGb,max:maxGb,ratio:40,fan:60,xmp:pcBuild.RAM.ddr==='DDR5',fast:true,secure:false,hour:12,min:30,order:[0,1]};
   renderBios();
 };
-// ---------- BIOS ----------
-const BTABS=['System','Boot','Memory','Exit'];
+// ---------- BIOS v3 : full UEFI, easy RAM, mouse+touch+keys ----------
+const BTABS=['System','Boot','Memory','OC & Fan','Monitor','Security','Exit'];
 function biosScreen(msg){$('#screenLabel').textContent='DISPLAY — NO SIGNAL';$('#screen').className='screen off';$('#screen').innerHTML='<div class="screen-off-msg">'+msg+'</div>';}
+function biosBoost(){let m=1+(Math.max(0,(bios.ratio||40)-40)*0.015);if(bios.xmp)m*=1.05;return m;}
+function biosCpuTemp(){return Math.round(32+(bios.ratio-34)*2.2+(100-bios.fan)*0.25+(bios.xmp?2:0));}
 function renderBios(){
-  $('#screenLabel').textContent='DISPLAY — LumiPhones BIOS';
+  $('#screenLabel').textContent='DISPLAY — LumiPhones UEFI BIOS';
   const s=$('#screen');s.className='screen';s.innerHTML='';
   const b=document.createElement('div');b.className='bios';
-  const drives=[usbInserted?('USB: '+usbInserted.name+' ['+usbInserted.os+']'):null,pcBuild.SSD?('SSD: '+pcBuild.SSD.name):null].filter(Boolean);
+  b.style.cssText='background:linear-gradient(180deg,#10238f,#0b1e9e);min-height:440px;font-size:14px';
+  const allDrives=[usbInserted?('USB: '+usbInserted.name+' ['+usbInserted.os+']'):null,pcBuild.SSD?('SSD: '+pcBuild.SSD.name):null].filter(Boolean);
+  const order=(bios.order||[0,1]).filter(i=>i<allDrives.length);
+  while(order.length<allDrives.length)order.push(order.length);
+  bios.order=order;
+  const temp=biosCpuTemp();
   let body='';
-  if(bios.tab===0)body=`<p>LumiPhones BIOS v2.4</p><p>CPU: ${pcBuild.CPU.name} (${pcBuild.CPU.socket})<br>Board: ${pcBuild.BOARD.name}<br>RAM: ${bios.max}GB ${pcBuild.RAM.ddr}<br>GPU: ${pcBuild.GPU?pcBuild.GPU.name:'—'} • PSU ${pcBuild.PSU.name}</p>`;
-  if(bios.tab===1)body=`<p>Boot priority (ENTER):</p>`+(drives.length?drives.map((d,i)=>`<div class="${i===bios.sel?'sel':''}">${i===bios.sel?'▶ ':''}${d}</div>`).join(''):'<p>No bootable devices!</p>');
-  if(bios.tab===2)body=`<p>Allocate RAM (max ${bios.max}GB):</p><h2>◀ ${bios.ram} GB ▶</h2>`;
-  if(bios.tab===3)body=`<p>Save & Exit?</p><div class="${bios.sel===0?'sel':''}">Save & reboot</div><div class="${bios.sel===1?'sel':''}">Discard</div>`;
-  b.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap">${BTABS.map((t,i)=>`<span style="padding:4px 10px;${i===bios.tab?'background:#fff;color:#0b1e9e':''}">${t}</span>`).join('')}</div><hr>${body}<hr><small>touch buttons below work on mobile</small>`;
+  if(bios.tab===0){
+    body=`<p><b>LumiPhones UEFI v3.0</b> • ${pcBuild.BOARD.name}</p>
+    <p>CPU: ${pcBuild.CPU.name} @ ${(bios.ratio/10).toFixed(1)}GHz • ${temp}°C<br>RAM installed: <b>${bios.max}GB ${pcBuild.RAM.ddr}</b> • Allocated: <b>${bios.ram}GB</b><br>GPU: ${pcBuild.GPU?pcBuild.GPU.name:'iGPU'} • SSD: ${pcBuild.SSD?pcBuild.SSD.name:'—'}</p>
+    <p>🕒 Time: <button data-b="h-" class="btn small">−</button> ${String(bios.hour).padStart(2,'0')}:${String(bios.min).padStart(2,'0')} <button data-b="h+" class="btn small">+</button> <button data-b="m+" class="btn small">+10m</button></p>
+    <p><small>TIP: click tabs / buttons directly — keyboard & touch pad below also work. F9 = defaults.</small></p>`;
+  }else if(bios.tab===1){
+    body=`<p><b>Boot priority</b> — tap a drive to boot now, ▲▼ reorders:</p>`+(allDrives.length?order.map((di,pos)=>`<div data-boot="${di}" class="${pos===bios.sel?'sel':''}" style="padding:8px;border-radius:8px;cursor:pointer">${pos===bios.sel?'▶ ':''}#${pos+1} ${allDrives[di]} <button data-mv="${pos}|-1" class="btn small">▲</button> <button data-mv="${pos}|1" class="btn small">▼</button> <button data-bnow="${di}" class="btn small primary">Boot ➜</button></div>`).join(''):'<p>No bootable devices! Plug USB / install SSD.</p>')
+    +`<p>Fast Boot: <button data-b="fast" class="btn small ${bios.fast?'primary':''}">${bios.fast?'ON':'OFF'}</button></p>`;
+  }else if(bios.tab===2){
+    const pct=Math.round(bios.ram/bios.max*100);
+    body=`<p><b>Memory — easy mode ✅</b> (installed <b>${bios.max}GB</b>)</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button data-b="ram-" class="btn primary" style="font-size:22px;padding:10px 18px">− 1GB</button>
+      <div style="font-size:34px;font-weight:800;background:#fff;color:#0b1e9e;border-radius:12px;padding:6px 18px">${bios.ram}GB</div>
+      <button data-b="ram+" class="btn primary" style="font-size:22px;padding:10px 18px">+ 1GB</button>
+      <button data-b="rammax" class="btn small">MAX (${bios.max})</button>
+      <button data-b="ramhalf" class="btn small">½ (${Math.ceil(bios.max/2)})</button>
+    </div>
+    <input data-r="ram" type="range" min="2" max="${bios.max}" step="1" value="${bios.ram}" style="width:100%;height:34px;accent-color:#fff">
+    <div class="meter" style="background:rgba(255,255,255,.25)"><div style="width:${pct}%"></div></div>
+    <p>XMP Profile: <button data-b="xmp" class="btn small ${bios.xmp?'primary':''}">${bios.xmp?'ON (+5% speed)':'OFF'}</button> • Effective speed boost ×${biosBoost().toFixed(2)}</p>`;
+  }else if(bios.tab===3){
+    body=`<p><b>OC & Fan</b> — overclock = faster but hotter!</p>
+    <p>CPU Ratio: <button data-b="oc-" class="btn small">−</button> <b>${(bios.ratio/10).toFixed(1)}GHz</b> <button data-b="oc+" class="btn small">+</button> <small>(3.4–6.0)</small></p>
+    <input data-r="oc" type="range" min="34" max="60" step="1" value="${bios.ratio}" style="width:100%;height:30px;accent-color:#fff">
+    <p>Fan speed: <button data-b="fan-" class="btn small">−10%</button> <b>${bios.fan}%</b> <button data-b="fan+" class="btn small">+10%</button></p>
+    <input data-r="fan" type="range" min="0" max="100" step="5" value="${bios.fan}" style="width:100%;height:30px;accent-color:#7CFFB2">
+    <p>Est. temp <b style="color:${temp>85?'#ff8080':'#7CFFB2'}">${temp}°C</b> ${temp>90?'🔥 DANGER: will fail boot — raise fan / lower OC!':temp>80?'⚠️ hot':'✅ cool'} • Boost ×${biosBoost().toFixed(2)}</p>`;
+  }else if(bios.tab===4){
+    body=`<p><b>Hardware Monitor</b> (live)</p>
+    <p>🌡️ CPU ${temp}°C • Board 34°C • GPU ${pcBuild.GPU?38+Math.round((100-bios.fan)/10):31}°C<br>🌀 Fan ${Math.round(bios.fan*32)} RPM (${bios.fan}%) • ⚡ ${(3.2+(bios.ratio-34)*0.08).toFixed(1)}V<br>🔋 PSU ${pcBuild.PSU.watts}W • Load ~${Math.min(95,30+benchScore()/120)}%</p>
+    <button data-b="fanmax" class="btn small primary">Max fans 🌀</button> <button data-b="fanauto" class="btn small">Auto 60%</button>`;
+  }else if(bios.tab===5){
+    body=`<p><b>Security</b></p><p>Secure Boot: <button data-b="sec" class="btn small ${bios.secure?'primary':''}">${bios.secure?'ON':'OFF'}</button></p><p>Admin password: <button data-b="pwd" class="btn small">Set 1234 🔑</button> ${bios.pwd?'✅ set':'⬜ not set'}</p><p><small>Secure Boot ON = macOS refuses to boot (Apple quirks 😅). Turn OFF for Hackintosh.</small></p>`;
+  }else{
+    body=`<p><b>Exit</b></p>
+    <div data-x="save" style="padding:10px;background:${bios.sel===0?'#fff;color:#0b1e9e':''};border-radius:8px;cursor:pointer">💾 Save changes & reboot (boots #1)</div>
+    <div data-x="boot1" style="padding:10px;cursor:pointer">🚀 Boot override: ${allDrives[order[0]]||'—'}</div>
+    <div data-x="def" style="padding:10px;cursor:pointer">↩ Restore optimized defaults (F9)</div>
+    <div data-x="off" style="padding:10px;cursor:pointer">⏻ Discard & shutdown</div>`;
+  }
+  b.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap">${BTABS.map((t,i)=>`<span data-t="${i}" style="padding:6px 10px;border-radius:8px;cursor:pointer;${i===bios.tab?'background:#fff;color:#0b1e9e;font-weight:800':''}">${t}</span>`).join('')}</div><hr>${body}<hr><small>🖱️ click everything • ⌨️ ←→ tabs ▲▼ select ENTER confirm • F9 defaults • touch pad below = same keys</small>`;
   s.appendChild(b);
+  b.querySelectorAll('[data-t]').forEach(t=>t.onclick=()=>{bios.tab=+t.dataset.t;bios.sel=0;renderBios();});
+  b.querySelectorAll('[data-boot]').forEach(d2=>d2.onclick=e=>{if(e.target.dataset.mv||e.target.dataset.bnow)return;bios.sel=order.indexOf(+d2.dataset.boot);renderBios();});
+  b.querySelectorAll('[data-bnow]').forEach(x=>x.onclick=()=>doBoot(+x.dataset.bnow));
+  b.querySelectorAll('[data-mv]').forEach(x=>x.onclick=()=>{const[p,d]=x.dataset.mv.split('|').map(Number);const np=p+d;if(np<0||np>=order.length)return;const t=order[p];order[p]=order[np];order[np]=t;bios.sel=np;renderBios();});
+  b.querySelectorAll('[data-x]').forEach(x=>x.onclick=()=>{
+    const v=x.dataset.x;
+    if(v==='save')doBoot(bios.order[0]??0);
+    if(v==='boot1')doBoot(bios.order[0]??0);
+    if(v==='def'){biosDefault();renderBios();toast('Defaults restored ↩');}
+    if(v==='off'){showWs('pc');toast('Shutdown ⏻');}
+  });
+  b.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>biosBtn(x.dataset.b));
+  b.querySelectorAll('[data-r]').forEach(r=>r.oninput=()=>{
+    if(r.dataset.r==='ram')bios.ram=+r.value;
+    if(r.dataset.r==='oc')bios.ratio=+r.value;
+    if(r.dataset.r==='fan')bios.fan=+r.value;
+    renderBios();
+  });
+}
+function biosDefault(){const m=bios.max;bios={tab:bios.tab,sel:0,ram:m,max:m,ratio:40,fan:60,xmp:false,fast:true,secure:false,hour:12,min:30,order:[0,1]};}
+function biosBtn(a){
+  if(a==='ram-')bios.ram=Math.max(2,bios.ram-1);
+  if(a==='ram+')bios.ram=Math.min(bios.max,bios.ram+1);
+  if(a==='rammax')bios.ram=bios.max;
+  if(a==='ramhalf')bios.ram=Math.max(2,Math.ceil(bios.max/2));
+  if(a==='oc-')bios.ratio=Math.max(34,bios.ratio-1);
+  if(a==='oc+')bios.ratio=Math.min(60,bios.ratio+1);
+  if(a==='fan-')bios.fan=Math.max(0,bios.fan-10);
+  if(a==='fan+')bios.fan=Math.min(100,bios.fan+10);
+  if(a==='fanmax')bios.fan=100;
+  if(a==='fanauto')bios.fan=60;
+  if(a==='xmp')bios.xmp=!bios.xmp;
+  if(a==='fast')bios.fast=!bios.fast;
+  if(a==='sec')bios.secure=!bios.secure;
+  if(a==='pwd'){bios.pwd=true;toast('Password set 🔑');}
+  if(a==='h+')bios.hour=(bios.hour+1)%24;
+  if(a==='h-')bios.hour=(bios.hour+23)%24;
+  if(a==='m+')bios.min=(bios.min+10)%60;
+  renderBios();
 }
 function biosKey(k){
-  if($('#wsScreen').classList.contains('hidden')||!pcBuild.CPU)return;
-  if(k==='left'){if(bios.tab===2)bios.ram=Math.max(2,bios.ram-2);else{bios.tab=(bios.tab+3)%4;bios.sel=0;}}
-  if(k==='right'){if(bios.tab===2)bios.ram=Math.min(bios.max,bios.ram+2);else{bios.tab=(bios.tab+1)%4;bios.sel=0;}}
+  if($('#wsScreen').classList.contains('hidden')||!pcBuild.CPU||!bios.max)return;
+  const nT=BTABS.length;
+  if(bios.tab===2){
+    // EASY RAM: every direction key adjusts RAM, no tab-trap
+    if(k==='left'||k==='down')bios.ram=Math.max(2,bios.ram-1);
+    if(k==='right'||k==='up')bios.ram=Math.min(bios.max,bios.ram+1);
+    if(k==='enter'){toast('RAM set '+bios.ram+'GB / '+bios.max+'GB ✅');}
+    renderBios();return;
+  }
+  if(k==='left')bios.tab=(bios.tab+nT-1)%nT,bios.sel=0;
+  if(k==='right')bios.tab=(bios.tab+1)%nT,bios.sel=0;
   if(k==='up')bios.sel=Math.max(0,bios.sel-1);
   if(k==='down')bios.sel++;
   if(k==='enter'){
-    if(bios.tab===1)doBoot(bios.sel);
-    if(bios.tab===2)toast('RAM '+bios.ram+'GB ✅');
-    if(bios.tab===3&&bios.sel===0)doBoot(0);
-    if(bios.tab===3){showWs('pc');return;}
+    if(bios.tab===1)doBoot(bios.order[bios.sel]??0);
+    if(bios.tab===3)toast('OC '+(bios.ratio/10).toFixed(1)+'GHz • '+biosCpuTemp()+'°C');
+    if(bios.tab===6&&bios.sel===0)doBoot(bios.order[0]??0);
+    if(bios.tab===6){showWs('pc');return;}
   }
+  if(k==='f9'){biosDefault();toast('Defaults ↩');}
   renderBios();
 }
 document.querySelectorAll('[data-bioskey]').forEach(b=>b.onclick=()=>biosKey(b.dataset.bioskey));
-document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')biosKey('up');if(e.key==='ArrowDown')biosKey('down');if(e.key==='ArrowLeft')biosKey('left');if(e.key==='ArrowRight')biosKey('right');if(e.key==='Enter')biosKey('enter');});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowUp')biosKey('up');if(e.key==='ArrowDown')biosKey('down');if(e.key==='ArrowLeft')biosKey('left');if(e.key==='ArrowRight')biosKey('right');if(e.key==='Enter')biosKey('enter');if(e.key==='F9')biosKey('f9');});
 // ---------- BOOT + OS ----------
 function doBoot(idx){
   const s=$('#screen');$('#screenLabel').textContent='DISPLAY — BOOTING';
@@ -463,51 +555,213 @@ function doBoot(idx){
   if(usbInserted&&idx===0)target=usbInserted.os;
   else if(pcBuild.SSD)target=usbInserted?usbInserted.os:'windows';
   if(!usbInserted&&!pcBuild.SSD){biosScreen('No boot device ❌');return;}
-  const logs=['LumiPhones BIOS — RAM '+bios.ram+'GB OK','CPU '+pcBuild.CPU.name+' OK','GPU '+(pcBuild.GPU?pcBuild.GPU.name:'iGPU'),'Boot from '+(usbInserted&&idx===0?'USB':'SSD')+'...','Kernel + drivers...','Desktop...'];
+  if(target==='macos'&&bios.secure){biosScreen('⛔ Secure Boot blocked macOS.<br>Go to Security tab → Secure Boot OFF.');return;}
+  const temp=biosCpuTemp();
+  if(temp>90){biosScreen(`🔥 CPU OVERHEAT (${temp}°C)!<br>Lower OC or raise fan in OC & Fan tab,<br>then Save & reboot.`);return;}
+  const oc=(bios.ratio/10).toFixed(1);
+  let logs=bios.fast
+    ?[`LumiPhones UEFI — Fast Boot`,`RAM ${bios.ram}/${bios.max}GB OK • XMP ${bios.xmp?'ON':'OFF'}`,`CPU ${oc}GHz ${temp}°C OK`,`Booting ${usbInserted&&idx===0?'USB':'SSD'} → ${target}...`]
+    :['LumiPhones BIOS — RAM '+bios.ram+'/'+bios.max+'GB OK'+(bios.xmp?' (XMP)':''),'CPU '+pcBuild.CPU.name+' @ '+oc+'GHz '+temp+'°C OK','GPU '+(pcBuild.GPU?pcBuild.GPU.name:'iGPU'),'Detecting USB/SSD...','Boot from '+(usbInserted&&idx===0?'USB':'SSD')+' → '+target+'...','Loading kernel + drivers...','Starting desktop...'];
   s.className='screen';s.innerHTML='';let i=0;
-  const tick=()=>{if(i<logs.length){s.innerHTML+='<div>> '+logs[i++]+'</div>';setTimeout(tick,400);}else setTimeout(()=>renderOS(target),500);};
+  const tick=()=>{if(i<logs.length){s.innerHTML+='<div>> '+logs[i++]+'</div>';setTimeout(tick,bios.fast?220:400);}else setTimeout(()=>renderOS(target),500);};
   tick();
 }
+// ---------- RICH OS : window manager + per-OS apps ----------
+let osCtx=null;
+function osFSDefault(os){return {docs:[{n:'welcome.txt',c:'Welcome to '+(os==='windows'?'Windows 12':os==='linux'?'Ubuntu 24':'macOS Sonoma')+' on LumiPhones!\nRAM: '+bios.ram+'GB\nTry Terminal > neofetch'}],pics:[],dl:[]};}
+function getFS(os){try{const all=JSON.parse(localStorage.getItem('lumi_fs')||'{}');if(!all[os])all[os]=osFSDefault(os);return all;}catch(e){const o={};o[os]=osFSDefault(os);return o;}}
+function setFS(all){try{localStorage.setItem('lumi_fs',JSON.stringify(all));}catch(e){}}
+function getNotes(os){try{return JSON.parse(localStorage.getItem('lumi_notes_'+os)||'[{"t":"Todo","c":"Resell 3 phones today!"}]');}catch(e){return[];}}
+function setNotes(os,n){try{localStorage.setItem('lumi_notes_'+os,JSON.stringify(n));}catch(e){}}
+const OS_APPS={
+ windows:['Browser','Files','Notes','Calculator','Terminal','Paint','Music','Store','Settings','TaskMan'],
+ linux:['Browser','Files','Notes','Calculator','Terminal','Paint','Music','Store','Settings','Monitor'],
+ macos:['Browser','Files','Notes','Calculator','Terminal','Paint','Music','Store','Settings','Activity']
+};
+const OS_NAMES={windows:{Browser:'Edge',Files:'Explorer',Notes:'Notepad',Terminal:'PowerShell',Store:'MS Store',TaskMan:'Task Manager'},linux:{Browser:'Firefox',Files:'Files',Notes:'Gedit',Terminal:'Bash',Store:'Snap Store',Monitor:'Monitor'},macos:{Browser:'Safari',Files:'Finder',Notes:'Notes',Terminal:'zsh',Store:'App Store',Activity:'Activity'}};
 function renderOS(os){
-  $('#screenLabel').textContent='DISPLAY — '+os.toUpperCase()+' ('+bios.ram+'GB)';
+  $('#screenLabel').textContent='DISPLAY — '+os.toUpperCase()+' ('+bios.ram+'GB RAM)';
   const s=$('#screen');s.className='screen';s.innerHTML='';
-  const d=document.createElement('div');d.className='desktop '+(os==='windows'?'win':os==='linux'?'ubuntu':'mac');
-  const bar=os==='mac'?`<div style="background:rgba(255,255,255,.92);color:#222;padding:6px;border-radius:8px">🍎 LumiOS ${os} • ${bios.ram}GB • ${new Date().toLocaleTimeString()} • ⚡${benchScore()}</div>`:`<div style="font-weight:800">${os==='windows'?'🪟 Windows 12':'🐧 Ubuntu 24'} • ${bios.ram}GB • ⚡${benchScore()} • ${new Date().toLocaleTimeString()}</div>`;
-  d.innerHTML=bar+`<div id="osWin"></div><div class="taskbar" id="osBar"></div>`;
+  osCtx={os,wins:[],z:10,seq:1,wall:0};
+  const d=document.createElement('div');d.className='desktop '+(os==='windows'?'win':os==='linux'?'ubuntu':'mac');d.id='osDesk';
+  const walls={windows:['linear-gradient(160deg,#3aa0ff,#0a3d9e 60%,#062a6e)','linear-gradient(160deg,#7CFFB2,#0a6e4d)','linear-gradient(160deg,#b388ff,#3d0a9e)'],linux:['linear-gradient(180deg,#3d0a2e,#2c001e)','linear-gradient(180deg,#0a3d2e,#062a1e)','linear-gradient(180deg,#1a2a6e,#0a0a2e)'],macos:['linear-gradient(180deg,#9ecfff,#e8f4ff 70%)','linear-gradient(180deg,#ffd89e,#ff9e9e)','linear-gradient(180deg,#222, #555)']};
+  const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const topHtml=os==='macos'
+    ?`<div class="os-top"><span>🍎 Lumi • Finder • File • Edit • View • ⚡${benchScore()}</span><span>🔋100% • 📶 • ${time}</span></div>`
+    :os==='linux'?`<div class="os-top"><span>Activities • Firefox • Files • ⚡${benchScore()}</span><span>🔊 • 🔋 • ${time} • ⏻</span></div>`
+    :`<div class="os-top"><span>🪟 Windows 12 • ⚡${benchScore()} pts • ${bios.ram}GB</span><span>🔼 🔊 📶 🔋 • ${time}</span></div>`;
+  d.innerHTML=topHtml
+    +(os==='linux'?`<div class="os-dock-v" id="osDockV"></div>`:`<div class="os-icons" id="osDeskIcons"></div>`)
+    +`<div class="os-wins" id="osWins"></div>`
+    +`<div class="taskbar" id="osBar"></div><div id="osPop"></div>`;
+  d.dataset.wall=0;
   s.appendChild(d);
-  ['Browser','Notes','Calculator','Terminal','Paint','Store'].forEach(a=>{
-    const ic=document.createElement('div');ic.className='appicon';ic.textContent=a;
-    ic.onclick=()=>openApp(os,a,d);d.querySelector('#osBar').appendChild(ic);
-  });
+  const bar=d.querySelector('#osBar');
+  const mkBtn=(label,fn)=>{const b=document.createElement('div');b.className='appicon';b.textContent=label;b.onclick=fn;bar.appendChild(b);return b;};
+  if(os==='windows'){
+    mkBtn('🪟 Start',()=>toggleStart(d));
+    OS_APPS.windows.forEach(a=>mkBtn((OS_NAMES.windows[a]||a),()=>osOpen(a)));
+    mkBtn('🔍',()=>osOpen('Browser'));
+  }else if(os==='linux'){
+    const dock=d.querySelector('#osDockV');
+    OS_APPS.linux.forEach(a=>{const b=document.createElement('div');b.className='appicon';b.textContent=({Browser:'🦊',Files:'📁',Notes:'📝',Calculator:'🧮',Terminal:'💻',Paint:'🎨',Music:'🎵',Store:'📦',Settings:'⚙️',Monitor:'📊'})[a]||a;b.title=a;b.onclick=()=>osOpen(a);dock.appendChild(b);});
+    OS_APPS.linux.forEach(a=>mkBtn(a,()=>osOpen(a)));
+  }else{
+    OS_APPS.macos.forEach(a=>{const b=document.createElement('div');b.className='appicon';b.textContent=({Browser:'🧭',Files:'🙂',Notes:'📝',Calculator:'🧮',Terminal:'💻',Paint:'🎨',Music:'🎵',Store:'🅰️',Settings:'⚙️',Activity:'📊'})[a]||a;b.title=a;b.onclick=()=>osOpen(a);bar.appendChild(b);});
+    const desk=[['Safari','Browser'],['Finder','Files'],['Notes','Notes']];
+    const di=d.querySelector('#osDeskIcons');
+    if(os!=='linux'){const icons=os==='windows'?[['This PC','Files'],['Edge','Browser'],['Notepad','Notes'],['Recycle','Files']]:[['Safari','Browser'],['Finder','Files'],['Notes','Notes']];const box=d.querySelector('#osDeskIcons');if(box)icons.forEach(([l,a])=>{const e=document.createElement('div');e.className='os-icon';e.innerHTML=`<div>${{ 'This PC':'🖥️',Edge:'🌐',Notepad:'📝',Recycle:'♻️',Safari:'🧭',Finder:'🙂',Notes:'📝'}[l]||'📦'}</div>${l}`;e.ondblclick=()=>osOpen(a);e.onclick=()=>osOpen(a);box.appendChild(e);});}
+  }
+  d._walls=walls[os];
+  setInterval(()=>{const t=d.querySelector('.os-top span:last-child');if(t&&document.body.contains(d))t.textContent=t.textContent.replace(/\d\d:\d\d.*/,'')+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});},30000);
 }
-function openApp(os,name,root){
-  const w=root.querySelector('#osWin');w.innerHTML='';
-  const box=document.createElement('div');box.className='window';
-  const key=os+name;
-  if(name==='Store'){
-    box.innerHTML=`<b>📦 Store</b><div>${['Music','Files','Crypto'].map(a=>`<div>${installedApps[key+a]?'✅':'⬜'} ${a} <button class="btn small primary">${installedApps[key+a]?'Open':'Install $10'}</button></div>`).join('')}</div><button class="btn small">Close</button>`;
-    box.querySelectorAll('.btn.primary').forEach((b,i)=>b.onclick=()=>{
-      const a=['Music','Files','Crypto'][i];
-      if(installedApps[key+a]){openApp(os,a,root);return;}
-      installedApps[key+a]=true;toast(a+' installed 🎉');openApp(os,name,root);save();
+function toggleStart(d){
+  const p=d.querySelector('#osPop');
+  if(p.innerHTML){p.innerHTML='';return;}
+  p.innerHTML=`<div class="startmenu">${OS_APPS[osCtx.os].map(a=>`<button data-a="${a}">${OS_NAMES[osCtx.os][a]||a}</button>`).join('')}<button data-a="__wall">🎨 Wallpaper</button></div>`;
+  p.querySelectorAll('button').forEach(b=>b.onclick=()=>{p.innerHTML='';if(b.dataset.a==='__wall')cycleWall();else osOpen(b.dataset.a);});
+}
+function cycleWall(){const d=$('#osDesk');if(!d)return;osCtx.wall=(osCtx.wall+1)%d._walls.length;d.style.background=d._walls[osCtx.wall];toast('Wallpaper changed 🎨');}
+function osOpen(app){
+  const ctx=osCtx,os=ctx.os;
+  const id=ctx.seq++;
+  const names=OS_NAMES[os]||{};
+  const title=(names[app]||app)+' — '+os;
+  const wins=$('#osWins');
+  const w=document.createElement('div');w.className='os-win';w.id='osw'+id;
+  w.style.left=(8+(ctx.wins.length*26)%160)+'px';w.style.top=(8+(ctx.wins.length*30)%120)+'px';w.style.zIndex=++ctx.z;
+  const ctrls=os==='macos'?`<div class="ctl"><span data-c="x" style="background:#ff5f57">•</span><span data-c="m" style="background:#febc2e">•</span></div><span>${title}</span><span></span>`
+    :`<span>${title}</span><div class="ctl"><span data-c="m">—</span><span data-c="x">✕</span></div>`;
+  w.innerHTML=`<div class="os-title">${ctrls}</div><div class="os-body" id="osb${id}"></div>`;
+  wins.appendChild(w);
+  const rec={id,app,el:w};ctx.wins.push(rec);
+  document.querySelectorAll('#osBar .appicon').forEach(b=>{if(b.textContent.includes(names[app]||app))b.classList.add('open');});
+  w.onpointerdown=()=>w.style.zIndex=++ctx.z;
+  const tb=w.querySelector('.os-title');
+  let sx,sy,ox,oy,drag=false;
+  tb.onpointerdown=e=>{if(e.target.dataset.c)return;drag=true;sx=e.clientX;sy=e.clientY;const r=w.getBoundingClientRect(),pr=wins.getBoundingClientRect();ox=r.left-pr.left;oy=r.top-pr.top;tb.setPointerCapture(e.pointerId);};
+  tb.onpointermove=e=>{if(!drag)return;w.style.left=(ox+e.clientX-sx)+'px';w.style.top=Math.max(0,oy+e.clientY-sy)+'px';};
+  tb.onpointerup=()=>drag=false;
+  w.querySelector('[data-c="x"]').onclick=()=>{w.remove();ctx.wins=ctx.wins.filter(x=>x.id!==id);};
+  w.querySelector('[data-c="m"]').onclick=()=>{const b=w.querySelector('.os-body');b.style.display=b.style.display==='none'?'':'none';};
+  renderAppBody(os,app,id);
+}
+function renderAppBody(os,app,id){
+  const b=$('#osb'+id);if(!b)return;
+  const fs=getFS(os);
+  if(app==='Calculator'){
+    b.innerHTML=`<div style="font-size:24px;text-align:right;background:#111;color:#0f0;border-radius:8px;padding:8px" id="cd${id}">0</div><div class="calc-grid" style="margin-top:6px">${['C','⌫','%','/','7','8','9','*','4','5','6','-','1','2','3','+','0','.','=','⏎'].map(k=>`<button data-k="${k}">${k}</button>`).join('')}</div>`;
+    let expr='';
+    b.querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
+      const k=btn.dataset.k;
+      if(k==='C')expr='';
+      else if(k==='⌫')expr=expr.slice(0,-1);
+      else if(k==='='){try{expr=String(Function('"use strict";return ('+(expr||'0')+')')());}catch(e){expr='Error';}}
+      else expr+=k;
+      b.querySelector('#cd'+id).textContent=expr||'0';
     });
-  }else if(name==='Calculator'){
-    box.innerHTML=`<b>🧮 Calculator</b><br><input id="c1" type="number"> + <input id="c2" type="number"> <button class="btn small primary">=</button> <b id="cr"></b><br><br><button class="btn small">Close</button>`;
-    box.querySelector('.btn.primary').onclick=()=>{box.querySelector('#cr').textContent='= '+((+box.querySelector('#c1').value)+(+box.querySelector('#c2').value));};
-  }else if(name==='Notes'){box.innerHTML=`<b>📝 Notes</b><br><textarea style="width:100%;height:80px">Hello from ${os}!</textarea><br><button class="btn small">Close</button>`;}
-  else if(name==='Terminal'){box.innerHTML=`<b>💻 Terminal</b><div style="background:#111;color:#0f0;padding:8px;border-radius:8px">lumi@${os}:~$ neofetch<br>OS:${os} RAM:${bios.ram}GB CPU:${pcBuild.CPU.name} SCORE:${benchScore()}</div><button class="btn small">Close</button>`;}
-  else if(name==='Paint'){box.innerHTML=`<b>🎨 Paint</b><br><canvas id="pc2" width="260" height="120" style="border:2px solid #333;border-radius:8px;touch-action:none"></canvas><br><button class="btn small">Close</button>`;
-    const cv=box.querySelector('#pc2'),cx=cv.getContext('2d');cx.lineWidth=3;let dr=false;
-    cv.onpointerdown=()=>dr=true;cv.onpointerup=()=>dr=false;cv.onpointermove=e=>{if(!dr)return;const r=cv.getBoundingClientRect();cx.fillStyle='#2f7bff';cx.fillRect(e.clientX-r.left,e.clientY-r.top,5,5);};
-  }else if(name==='Music'){box.innerHTML=`<b>🎵 Music</b><p>8-bit jingle:</p><button class="btn small primary">▶ Play</button> <button class="btn small">Close</button>`;
-    box.querySelector('.btn.primary').onclick=()=>{try{const a=new (window.AudioContext||window.webkitAudioContext)();[440,554,659,880].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=f;o.start(a.currentTime+i*.15);o.stop(a.currentTime+i*.15+.14);});}catch(e){toast('No audio');}};
-  }else if(name==='Files'){box.innerHTML=`<b>📁 Files</b><p>📄 invoice.txt<br>📁 builds/ — score ${benchScore()}<br>📁 photos/</p><button class="btn small">Close</button>`;}
-  else if(name==='Crypto'){box.innerHTML=`<b>📈 Crypto</b><p>LUMI: $${(Math.random()*10+2).toFixed(2)} ${(Math.random()>.5?'🟢':'🔴')}</p><button class="btn small">Close</button>`;}
-  else{box.innerHTML=`<b>🌐 Browser</b><p>LumiPhones web on <b>${os}</b> ✅ ${bios.ram}GB</p><button class="btn small">Close</button>`;}
-  box.querySelector('.btn.small:last-child').onclick=()=>w.innerHTML='';
-  const c=box.querySelectorAll('.btn.small');if(c.length&&name==='Store')c[c.length-1].onclick=()=>w.innerHTML='';
-  w.appendChild(box);
+  }else if(app==='Terminal'){
+    const prompt=os==='windows'?'PS C:\\lumi>':os==='linux'?'lumi@ubuntu:~$':'lumi@mac ~ %';
+    b.innerHTML=`<div class="term" id="tm${id}"><div>lumi terminal (${os}) — type <b>help</b></div><div id="tout${id}"></div><div>${prompt} <input id="tin${id}" placeholder="help"></div></div>`;
+    const inp=b.querySelector('#tin'+id),out=b.querySelector('#tout'+id);
+    inp.onkeydown=e=>{
+      if(e.key!=='Enter')return;
+      const c=inp.value.trim();inp.value='';
+      const print=t=>out.innerHTML+=`<div>${t}</div>`;
+      print(prompt+' '+c);
+      const lc=c.toLowerCase();
+      if(lc==='help')print('help • neofetch • bench • ls/dir • echo [t] • clear • whoami • date • sudo');
+      else if(lc==='neofetch'||lc==='sysinfo')print(`OS:${os} • CPU:${pcBuild.CPU?pcBuild.CPU.name:'?'} • RAM:${bios.ram}GB • GPU:${pcBuild.GPU?pcBuild.GPU.name:'iGPU'} • SCORE:${benchScore()}`);
+      else if(lc==='bench')print('Benchmark: '+benchScore()+' pts ⚡ '+(benchScore()>3000?'BEAST 🔥':'solid ✅'));
+      else if(lc==='ls'||lc==='dir')print('docs/ pics/ downloads/ • welcome.txt');
+      else if(lc.startsWith('echo'))print(c.slice(5)||'...');
+      else if(lc==='clear')out.innerHTML='';
+      else if(lc==='whoami')print(os==='windows'?'lumi\\reseller':'lumi');
+      else if(lc==='date')print(new Date().toString());
+      else if(lc==='sudo')print(os==='linux'?'[sudo] you are already root 😎':'nice try 😏');
+      else if(lc)print(`'${c}' not found — try help`);
+      b.scrollTop=b.scrollHeight;
+    };
+    setTimeout(()=>inp.focus(),100);
+  }else if(app==='Notes'){
+    const notes=getNotes(os);
+    b.innerHTML=`<div style="display:flex;gap:6px"><select id="nl${id}">${notes.map((n,i)=>`<option value="${i}">${n.t}</option>`).join('')}</select><button class="btn small" id="nn${id}">+ New</button><button class="btn small" id="nd${id}">Delete</button></div><input id="nt${id}" placeholder="title"><textarea id="nc${id}" style="height:110px"></textarea><button class="btn small primary" id="ns${id}">💾 Save</button>`;
+    const sel=b.querySelector('#nl'+id),ti=b.querySelector('#nt'+id),tx=b.querySelector('#nc'+id);
+    const fill=()=>{const n=notes[+sel.value||0];if(n){ti.value=n.t;tx.value=n.c;}};
+    sel.onchange=fill;fill();
+    b.querySelector('#ns'+id).onclick=()=>{const i=+sel.value||0;notes[i]={t:ti.value||'Untitled',c:tx.value};setNotes(os,notes);renderAppBody(os,app,id);toast('Note saved 💾');};
+    b.querySelector('#nn'+id).onclick=()=>{notes.push({t:'New note',c:''});setNotes(os,notes);renderAppBody(os,app,id);};
+    b.querySelector('#nd'+id).onclick=()=>{notes.splice(+sel.value||0,1);setNotes(os,notes.length?notes:[{t:'Todo',c:''}]);renderAppBody(os,app,id);};
+  }else if(app==='Files'){
+    b.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" data-f="docs">📄 Docs</button><button class="btn small" data-f="pics">🖼️ Pics</button><button class="btn small" data-f="dl">⬇️ DL</button><button class="btn small primary" id="nf${id}">+ File</button></div><div id="fl${id}" style="margin-top:6px"></div><div class="meter"><div style="width:${Math.min(90,20+fs.docs.length*8)}%"></div></div><small>SSD ${pcBuild.SSD?pcBuild.SSD.name:'virtual'} • ${bios.ram}GB RAM</small>`;
+    let folder='docs';
+    const draw=()=>{b.querySelector('#fl'+id).innerHTML=fs[folder].map((f,i)=>`<div class="file-row"><span>📄 ${f.n}</span><span><button class="btn small" data-o="${i}">Open</button> <button class="btn small" data-d="${i}">✕</button></span></div>`).join('')||'<div class="muted">Empty folder</div>';
+      b.querySelectorAll('[data-o]').forEach(x=>x.onclick=()=>{toast('Opened '+fs[folder][+x.dataset.o].n+' 📄');osOpen('Notes');});
+      b.querySelectorAll('[data-d]').forEach(x=>x.onclick=()=>{fs[folder].splice(+x.dataset.d,1);setFS(fs);draw();});
+    };
+    b.querySelectorAll('[data-f]').forEach(x=>x.onclick=()=>{folder=x.dataset.f;draw();});
+    b.querySelector('#nf'+id).onclick=()=>{const n=prompt('File name?','note.txt');if(n){fs[folder].push({n,c:'...'});setFS(fs);draw();}};
+    draw();
+  }else if(app==='Browser'){
+    const bn=os==='windows'?'Edge':os==='linux'?'Firefox':'Safari';
+    b.innerHTML=`<div style="display:flex;gap:6px"><input id="bu${id}" value="lumi://store" style="flex:1"><button class="btn small primary" id="bg${id}">Go</button></div><div style="display:flex;gap:6px;margin:6px 0"><button class="btn small" data-u="lumi://store">🏪 Store</button><button class="btn small" data-u="lumi://news">📰 News</button><button class="btn small" data-u="lumi://bench">⚡ Bench</button></div><div id="bp${id}" style="background:#f4f8ff;border-radius:8px;padding:8px;min-height:120px"></div>`;
+    const page=u=>{
+      const p=b.querySelector('#bp'+id);
+      if(u.includes('news'))p.innerHTML=`<b>📰 LumiNews</b><p>• GPU prices down 8% — great time to build!<br>• Rare phones sell +15% on weekends<br>• Benchmark over 3000 = WHALE buyer 🐳</p>`;
+      else if(u.includes('bench'))p.innerHTML=`<b>⚡ Your rig</b><p>Score <b>${benchScore()}</b> • CPU ${pcBuild.CPU?pcBuild.CPU.name:'—'}<br>GPU ${pcBuild.GPU?pcBuild.GPU.name:'—'} • RAM ${bios.ram}GB</p><button class="btn small primary" id="rb${id}">Re-run (+5 XP)</button>`;
+      else p.innerHTML=`<b>🏪 ${bn} — LumiStore</b><p>Free driver pack + shop coupon:</p><button class="btn small primary" id="cl${id}">Claim $5 coupon</button>`;
+      const rb=b.querySelector('#rb'+id);if(rb)rb.onclick=()=>{addXP(5);toast('Benchmark verified ⚡');};
+      const cl=b.querySelector('#cl'+id);if(cl)cl.onclick=()=>{balance+=5;renderBalance();save();toast('+$5 coupon! 🎟️');cl.disabled=true;};
+    };
+    b.querySelector('#bg'+id).onclick=()=>page(b.querySelector('#bu'+id).value);
+    b.querySelectorAll('[data-u]').forEach(x=>x.onclick=()=>{b.querySelector('#bu'+id).value=x.dataset.u;page(x.dataset.u);});
+    page('lumi://store');
+  }else if(app==='Paint'){
+    b.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><input type="color" id="pc${id}" value="#2f7bff" style="width:44px"><input type="range" id="ps${id}" min="2" max="20" value="5"><button class="btn small" id="pe${id}">Eraser</button><button class="btn small" id="px${id}">Clear</button><button class="btn small primary" id="pv${id}">💾 Save</button></div><canvas id="cv${id}" width="340" height="160" style="border:2px solid #333;border-radius:8px;touch-action:none;margin-top:6px;background:#fff"></canvas>`;
+    const cv=b.querySelector('#cv'+id),cx=cv.getContext('2d');let dr=false,col=b.querySelector('#pc'+id),sz=b.querySelector('#ps'+id),er=false;
+    cx.fillStyle='#fff';cx.fillRect(0,0,340,160);
+    const pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*(340/r.width),(e.clientY-r.top)*(160/r.height)];};
+    cv.onpointerdown=e=>{dr=true;cx.beginPath();const[x,y]=pos(e);cx.moveTo(x,y);cv.setPointerCapture(e.pointerId);};
+    cv.onpointerup=()=>dr=false;
+    cv.onpointermove=e=>{if(!dr)return;const[x,y]=pos(e);cx.strokeStyle=er?'#fff':col.value;cx.lineWidth=+sz.value;cx.lineTo(x,y);cx.stroke();};
+    b.querySelector('#pe'+id).onclick=()=>er=!er;
+    b.querySelector('#px'+id).onclick=()=>{cx.fillStyle='#fff';cx.fillRect(0,0,340,160);};
+    b.querySelector('#pv'+id).onclick=()=>{const all=getFS(os);all.pics.push({n:'drawing-'+Date.now()+'.png',c:''});setFS(all);toast('Saved to Files 🖼️');};
+  }else if(app==='Music'){
+    const tunes={windows:['Startup Chime','Office Groove','Night Drive'],linux:['Kernel Panic','Bash Beat','Penguin Walk'],macos:['Marimba','Catalina','Sonoma Breeze']};
+    b.innerHTML=`<b>🎵 ${os==='windows'?'Media Player':os==='linux'?'Rhythmbox':'Music'}</b><div class="viz" id="vz${id}">${'<div></div>'.repeat(14)}</div>${tunes[os].map((t,i)=>`<div class="file-row"><span>${i===0?'▶':'♪'} ${t}</span><button class="btn small primary" data-t="${i}">Play</button></div>`).join('')}<button class="btn small" id="stp${id}">⏹ Stop</button>`;
+    let actx=null;
+    const play=i=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const base=[523,587,659,784][i%4];[0,4,7,12,7,4].forEach((s,k)=>{const o=actx.createOscillator(),g=actx.createGain();o.connect(g);g.connect(actx.destination);o.type=i===2?'triangle':'square';o.frequency.value=base*Math.pow(2,s/12);o.start(actx.currentTime+k*.14);o.stop(actx.currentTime+k*.14+.13);});b.querySelector('#vz'+id).style.animation='';toast('Playing '+tunes[os][i]+' 🎵');}catch(e){toast('No audio');}};
+    b.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>play(+x.dataset.t));
+    b.querySelector('#stp'+id).onclick=()=>{try{actx&&actx.close();actx=null;}catch(e){}};
+  }else if(app==='Store'){
+    const extra=['Crypto','Assistant','Antivirus'];
+    b.innerHTML=`<b>📦 ${OS_NAMES[os].Store}</b><p>Free apps — one click install:</p>${extra.map(a=>`<div class="file-row"><span>${installedApps[os+a]?'✅':'⬜'} ${a}</span><button class="btn small primary" data-a="${a}">${installedApps[os+a]?'Open':'Get'}</button></div>`).join('')}<div class="meter"><div style="width:60%"></div></div><small>Featured: Lumi Drivers ✅ compatible</small>`;
+    b.querySelectorAll('[data-a]').forEach(x=>x.onclick=()=>{const a=x.dataset.a;if(installedApps[os+a]){osOpen(a==='Assistant'?'Terminal':a);}else{installedApps[os+a]=true;save();toast(a+' installed 🎉');renderAppBody(os,app,id);}});
+  }else if(app==='Settings'){
+    b.innerHTML=`<b>⚙️ Settings (${os})</b><div class="file-row"><span>🎨 Wallpaper</span><button class="btn small" id="sw${id}">Next</button></div><div class="file-row"><span>🌙 Dark windows</span><button class="btn small" id="dk${id}">Toggle</button></div><div style="background:#eef4ff;border-radius:8px;padding:8px;margin-top:6px"><b>About</b><br>OS: ${os} • RAM: ${bios.ram}GB<br>CPU: ${pcBuild.CPU?pcBuild.CPU.name:'—'} • Score: ${benchScore()}</div><button class="btn small primary" id="upd${id}">Check updates</button>`;
+    b.querySelector('#sw'+id).onclick=()=>cycleWall();
+    b.querySelector('#dk'+id).onclick=()=>{b.style.filter=b.style.filter?'':'invert(0.92)';};
+    b.querySelector('#upd'+id).onclick=()=>toast('All updates installed ✅');
+  }else if(app==='TaskMan'||app==='Monitor'||app==='Activity'){
+    b.innerHTML=`<b>📊 ${app} — live</b><div>CPU <div class="meter"><div id="mc${id}" style="width:30%"></div></div></div><div>RAM ${bios.ram}GB <div class="meter"><div id="mr${id}" style="width:50%"></div></div></div><div id="pl${id}">${['lumi-shell','browser','drivers','store','antivirus'].map(p=>`<div class="file-row"><span>• ${p}.exe — ${(Math.random()*15+2).toFixed(1)}% </span><button class="btn small" data-p="${p}">End</button></div>`).join('')}</div>`;
+    const iv=setInterval(()=>{const m=b.querySelector('#mc'+id),r=b.querySelector('#mr'+id);if(!document.body.contains(b)){clearInterval(iv);return;}if(m)m.style.width=(20+Math.random()*60)+'%';if(r)r.style.width=(30+Math.random()*50)+'%';},900);
+    b.querySelectorAll('[data-p]').forEach(x=>x.onclick=()=>{x.closest('.file-row').remove();addXP(2);toast('Freed memory ⚡');});
+  }else if(app==='Crypto'||app==='Assistant'||app==='Antivirus'){
+    if(app==='Crypto')b.innerHTML=`<b>📈 LUMI Coin</b><p style="font-size:22px">LUMI $${(Math.random()*10+2).toFixed(2)} 🟢</p><canvas id="ch${id}" width="300" height="80" style="border:1px solid #ccc;border-radius:8px"></canvas><br><button class="btn small primary" id="by${id}">Buy $20</button>`;
+    if(app==='Assistant')b.innerHTML=`<b>✨ Assistant</b><p>Ask me anything:</p><input id="aq${id}" placeholder="when to sell?"><button class="btn small primary" id="ab${id}">Ask</button><div id="ao${id}"></div>`;
+    if(app==='Antivirus')b.innerHTML=`<b>🛡️ Scan</b><p>System clean ✅</p><button class="btn small primary" id="sc${id}">Full scan (+10 XP)</button><div id="so${id}"></div>`;
+    const cv=b.querySelector('#ch'+id);
+    if(cv){const cx=cv.getContext('2d');cx.strokeStyle='#2f7bff';cx.lineWidth=2;cx.beginPath();let y=40;for(let x=0;x<300;x+=10){y=40+Math.sin(x/20)*20*(Math.random()*.5+.5);x===0?cx.moveTo(x,y):cx.lineTo(x,y);}cx.stroke();}
+    const by=b.querySelector('#by'+id);if(by)by.onclick=()=>{if(balance>=20){balance-=20;renderBalance();addXP(5);toast('Bought LUMI 📈');}else toast('Need $20');};
+    const ab=b.querySelector('#ab'+id);if(ab)ab.onclick=()=>{b.querySelector('#ao'+id).innerHTML='<p>🤖 Sell when condition is 100% and haggle is high. PCs with score >3000 get whale buyers! 🐳</p>';};
+    const sc=b.querySelector('#sc'+id);if(sc)sc.onclick=()=>{b.querySelector('#so'+id).textContent='Scanning… 0 threats ✅';addXP(10);};
+  }else{
+    b.innerHTML=`<b>${app}</b><p>Running on ${os} • ${bios.ram}GB RAM ⚡</p>`;
+  }
 }
+// keep alias for old calls
+function openApp(os,name,root){osOpen(name);}
 // ---------- UNITS ----------
 let pendingLoot=null,pendingUnitUid=null;
 function openUnit(uid){

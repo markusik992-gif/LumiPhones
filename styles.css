@@ -63,18 +63,51 @@ body{margin:0;font-family:'Segoe UI',system-ui,Roboto,Arial;background:linear-gr
 .monitor{border:3px solid #16233a;border-radius:16px;overflow:hidden;background:#000}
 .monitor-bar{background:#e8efff;padding:6px 10px;display:flex;gap:6px;align-items:center;font-weight:700;font-size:13px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}.r{background:#ff5f57}.y{background:#febc2e}.g{background:#28c840}
-.screen{aspect-ratio:16/9;background:#000;color:#0f0;font-family:Consolas,monospace;padding:14px;overflow:auto;min-height:340px;font-size:14px}
-.screen.off{color:#3a4a6b;display:flex;align-items:center;justify-content:center}
+.screen{aspect-ratio:auto;background:#000;color:#0f0;font-family:Consolas,monospace;padding:0;overflow:hidden;min-height:480px;font-size:14px}
+.screen.off{color:#3a4a6b;display:flex;align-items:center;justify-content:center;padding:14px}
 .bios{background:#0b1e9e;color:#fff;padding:12px;min-height:340px}
 .bios .sel{background:#fff;color:#0b1e9e}
 .touch-bios{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.desktop{min-height:340px;border-radius:8px;padding:10px;position:relative;overflow:hidden}
-.desktop.win{background:linear-gradient(180deg,#1a8cff,#004a99);color:#fff}
-.desktop.ubuntu{background:#2c001e;color:#fff}
-.desktop.mac{background:linear-gradient(180deg,#a8d8ff,#e8f4ff);color:#222}
-.taskbar{position:absolute;bottom:0;left:0;right:0;display:flex;gap:8px;padding:8px;background:rgba(0,0,0,.35)}
-.appicon{background:rgba(255,255,255,.9);color:#222;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700}
-.window{position:absolute;top:20px;left:20px;right:20px;background:#fff;color:#222;border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.desktop{min-height:480px;border-radius:0;padding:0;position:relative;overflow:hidden;font-family:'Segoe UI',system-ui}
+.desktop.win{background:linear-gradient(160deg,#3aa0ff,#0a3d9e 60%,#062a6e);color:#fff}
+.desktop.ubuntu{background:linear-gradient(180deg,#3d0a2e,#2c001e);color:#fff}
+.desktop.mac{background:linear-gradient(180deg,#9ecfff,#e8f4ff 70%);color:#222}
+.os-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;font-size:12px;font-weight:700;z-index:5}
+.win .os-top,.ubuntu .os-top{background:rgba(0,0,0,.35);color:#fff}
+.mac .os-top{background:rgba(255,255,255,.75);color:#222}
+.os-dock-v{position:absolute;left:6px;top:40px;bottom:60px;display:flex;flex-direction:column;gap:8px;z-index:5}
+.os-icons{position:absolute;top:40px;left:12px;display:flex;flex-direction:column;gap:10px;z-index:4}
+.os-icon{width:64px;text-align:center;font-size:11px;cursor:pointer;color:#fff;text-shadow:0 1px 4px #000}
+.os-icon div{font-size:26px;background:rgba(255,255,255,.9);border-radius:12px;padding:4px}
+.mac .os-icon{color:#222;text-shadow:none}
+.taskbar{position:absolute;bottom:0;left:0;right:0;display:flex;gap:6px;padding:8px;background:rgba(10,20,40,.55);z-index:20;align-items:center;overflow-x:auto}
+.mac .taskbar{justify-content:center;background:transparent}
+.mac .taskbar .appicon{font-size:20px;padding:8px 10px;transition:transform .15s}
+.mac .taskbar .appicon:hover{transform:scale(1.35) translateY(-6px)}
+.appicon{background:rgba(255,255,255,.94);color:#222;border-radius:10px;padding:7px 9px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;border:2px solid transparent}
+.appicon:hover{border-color:var(--blue)}
+.appicon.open{border-color:var(--green)}
+.startmenu{position:absolute;bottom:52px;left:8px;width:300px;background:#f3f6ff;color:#222;border-radius:14px;padding:10px;z-index:40;box-shadow:0 12px 40px rgba(0,0,0,.4);display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.startmenu button{border:1px solid #dbe7ff;background:#fff;border-radius:10px;padding:8px;cursor:pointer;font-weight:700}
+.os-wins{position:absolute;inset:32px 0 52px 0;z-index:10;pointer-events:none}
+.os-win{position:absolute;width:min(430px,92%);background:#fff;color:#222;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.45);pointer-events:auto;overflow:hidden;display:flex;flex-direction:column;max-height:100%}
+.os-title{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;font-weight:800;font-size:13px;cursor:grab;user-select:none;touch-action:none}
+.win .os-title{background:#e8f0ff}.ubuntu .os-title{background:#333;color:#fff}.mac .os-title{background:#f0f0f2}
+.os-title .ctl{display:flex;gap:6px}
+.os-title .ctl span{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(0,0,0,.08);font-size:13px}
+.os-body{padding:10px;overflow:auto;min-height:120px;max-height:320px;font-size:13px}
+.os-body input,.os-body textarea,.os-body select{border:2px solid #dbe7ff;border-radius:8px;padding:6px;width:100%;margin:4px 0}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.calc-grid button{padding:12px;font-size:16px;font-weight:800;border-radius:10px;border:2px solid #dbe7ff;background:#f4f8ff;cursor:pointer}
+.term{background:#0d1117;color:#3ffb74;border-radius:10px;padding:8px;font-family:Consolas,monospace;min-height:150px}
+.term input{background:transparent;border:none;color:#3ffb74;outline:none;width:70%}
+.meter{background:#e7e7e7;border-radius:999px;height:10px;overflow:hidden;margin:4px 0}
+.meter div{height:100%;background:linear-gradient(90deg,#1fbf6b,#2f7bff)}
+.file-row{display:flex;justify-content:space-between;padding:6px;border-radius:8px;cursor:pointer}
+.file-row:hover{background:#eef4ff}
+.viz{display:flex;gap:3px;align-items:flex-end;height:40px;margin:8px 0}
+.viz div{width:10px;background:linear-gradient(180deg,#2f7bff,#7CFFB2);border-radius:3px;animation:eq 0.6s infinite alternate}
+@keyframes eq{from{height:6px}to{height:36px}}
 .drawer{position:fixed;top:0;right:-380px;width:360px;max-width:92vw;height:100%;background:#fff;border-left:2px solid var(--line);z-index:50;transition:.25s;display:flex;flex-direction:column;padding:14px}
 .drawer.open{right:0}
 .modal{position:fixed;inset:0;background:rgba(20,40,80,.45);display:flex;align-items:center;justify-content:center;z-index:60}
