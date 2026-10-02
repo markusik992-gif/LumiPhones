@@ -90,6 +90,24 @@ body{margin:0;font-family:'Segoe UI',system-ui,Roboto,Arial;background:linear-gr
 .startmenu{position:absolute;bottom:52px;left:8px;width:300px;background:#f3f6ff;color:#222;border-radius:14px;padding:10px;z-index:40;box-shadow:0 12px 40px rgba(0,0,0,.4);display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .startmenu button{border:1px solid #dbe7ff;background:#fff;border-radius:10px;padding:8px;cursor:pointer;font-weight:700}
 .os-wins{position:absolute;inset:32px 0 52px 0;z-index:10;pointer-events:none}
+.os-lock{position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;background:rgba(8,15,35,.55);backdrop-filter:blur(8px);color:#fff;text-align:center;padding:20px}
+.mac .os-lock{background:rgba(200,220,240,.5);color:#222}
+.ctxmenu{position:absolute;z-index:60;background:#fff;color:#222;border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 12px 32px rgba(0,0,0,.4);min-width:190px}
+.ctxmenu button{border:none;background:#f2f6ff;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;text-align:left}
+.ctxmenu button:hover{background:#dbe7ff}
+.wallgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+.wallgrid div{height:44px;border-radius:8px;cursor:pointer;border:3px solid transparent}
+.wallgrid div:hover{border-color:var(--blue)}
+.msgrid{display:grid;grid-template-columns:repeat(8,26px);gap:2px;justify-content:center;margin:8px 0}
+.msgrid button{width:26px;height:26px;border-radius:6px;border:1px solid #b9cdf5;background:#e8f0ff;font-weight:800;cursor:pointer;font-size:13px;padding:0}
+.msgrid button.open{background:#fff}
+.mailmsg{border:2px solid #dbe7ff;border-radius:10px;padding:8px;margin:6px 0;background:#fbfdff}
+.mailmsg b{font-size:13px}
+.photogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.photogrid div{height:70px;border-radius:8px;display:flex;align-items:flex-end;justify-content:center;color:#fff;font-size:11px;font-weight:800;padding:4px;cursor:pointer;text-shadow:0 1px 3px #000}
+.memgrid{display:grid;grid-template-columns:repeat(4,52px);gap:6px;justify-content:center;margin:8px 0}
+.memgrid button{height:52px;font-size:24px;border-radius:10px;border:2px solid #dbe7ff;background:#eef4ff;cursor:pointer}
+.mailmsg{border:2px solid #dbe7ff;border-radius:10px;padding:8px;margin:6px 0;background:#fbfdff}
 .os-win{position:absolute;width:min(430px,92%);background:#fff;color:#222;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.45);pointer-events:auto;overflow:hidden;display:flex;flex-direction:column;max-height:100%}
 .os-title{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;font-weight:800;font-size:13px;cursor:grab;user-select:none;touch-action:none}
 .win .os-title{background:#e8f0ff}.ubuntu .os-title{background:#333;color:#fff}.mac .os-title{background:#f0f0f2}
@@ -131,6 +149,19 @@ body{margin:0;font-family:'Segoe UI',system-ui,Roboto,Arial;background:linear-gr
 .holdbtn.holding{background:#ffe08a;transform:scale(.97)}
 .rar{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
 .rar.common{background:#eef}.rar.rare{background:#dbeaff;color:var(--blue)}.rar.epic{background:#efe0ff;color:#7a2bff}.rar.legend{background:#ffe9b0;color:#8a5a00}
-.compat-ok{color:var(--green);font-weight:700}.compat-bad{color:var(--red);font-weight:700}
+.compat-ok{color:var(--green);font-weight:700}.compat-bad{color:var(--red);font-weight:700}.compat-warn{color:#b7791f;font-weight:700}
+/* drag-to-place PC building */
+.inv-item.selected{border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,123,255,.3);background:#eef4ff}
+.drag-ghost{position:fixed;z-index:999;display:flex;gap:8px;align-items:center;background:#16233a;color:#fff;font-weight:800;padding:8px 12px;border-radius:12px;pointer-events:none;box-shadow:0 10px 26px rgba(0,0,0,.4);opacity:.95}
+.drag-ghost img{width:44px;height:44px;object-fit:cover;border-radius:8px}
+.pc-slot.drop-hint{border-color:#fff;background:rgba(255,255,255,.14);animation:pulseSlot 1s infinite}
+.usb-slot.drop-hint{border-color:#fff;animation:pulseSlot 1s infinite}
+@keyframes pulseSlot{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.0)}50%{box-shadow:0 0 0 4px rgba(255,255,255,.35)}}
+.pc-slot.match{border-color:#7CFFB2;border-style:solid}
+.pc-slot.placed,.usb-slot.placed{animation:placedPop .9s ease}
+@keyframes placedPop{0%{transform:scale(1)}30%{transform:scale(1.06);box-shadow:0 0 0 5px rgba(124,255,178,.6)}100%{transform:scale(1)}}
+.pc-slot.shake{animation:slotShake .5s}
+@keyframes slotShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.slot-thumb{width:100%;height:64px;object-fit:cover;border-radius:8px;margin-bottom:6px;border:1px solid rgba(255,255,255,.3)}
 .bench-score{background:linear-gradient(90deg,#7CFFB2,#2f7bff);color:#06224d;font-weight:800;border-radius:10px;padding:6px 10px;display:inline-block;margin-top:6px}
 @media(max-width:980px){.layout{grid-template-columns:1fr}.bench-cols{grid-template-columns:1fr}}
